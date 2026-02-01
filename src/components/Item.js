@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import './Item.css';
 
 function Item() {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
+  const [data, setData] = useState({
     itemName: '',
     price: '',
     itemDescription: '',
@@ -14,7 +15,7 @@ function Item() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setData(prev => ({
       ...prev,
       [name]: value,
     }));
@@ -23,7 +24,7 @@ function Item() {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setFormData(prev => ({
+      setData(prev => ({
         ...prev,
         image: file,
         imagePreview: URL.createObjectURL(file),
@@ -31,21 +32,42 @@ function Item() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.itemName || !formData.price || !formData.itemDescription) {
+    if (!data.itemName || !data.price || !data.itemDescription) {
       alert('Please fill in all fields');
       return;
     }
 
+  const formData = new FormData();
+  formData.append('itemName', data.itemName);
+  formData.append('amount', data.price);
+  formData.append('description', data.itemDescription);
+  formData.append('itemImage', data.image);
+
+    try{
+    const response = await axios.post('http://localhost:8080/api/create-item', formData, {
+      headers: {
+        
+      }
+    });
+    if(response.ok){
+      const data = await response.json();
+      console.log('Create Item successfully:', data);
+    }
+  }catch(error){  
+    console.error('Error during creating item:', error);
+  }
+
+
     // Create new item object
     const newItem = {
       id: Date.now(),
-      itemName: formData.itemName,
-      price: parseFloat(formData.price),
-      itemDescription: formData.itemDescription,
-      image: formData.imagePreview,
+      itemName: data.itemName,
+      price: parseFloat(data.price),
+      itemDescription: data.itemDescription,
+      image: data.imagePreview,
       rating: 5,
     };
 
@@ -55,7 +77,7 @@ function Item() {
     localStorage.setItem('customItems', JSON.stringify(existingItems));
 
     // Reset form and navigate back
-    setFormData({
+    setData({
       itemName: '',
       price: '',
       itemDescription: '',
@@ -82,7 +104,7 @@ function Item() {
               id="itemName"
               type="text"
               name="itemName"
-              value={formData.itemName}
+              value={data.itemName}
               onChange={handleInputChange}
               placeholder="Enter item name"
               required
@@ -95,7 +117,7 @@ function Item() {
               id="price"
               type="number"
               name="price"
-              value={formData.price}
+              value={data.price}
               onChange={handleInputChange}
               placeholder="Enter price"
               step="0.01"
@@ -109,7 +131,7 @@ function Item() {
             <textarea
               id="itemDescription"
               name="itemDescription"
-              value={formData.itemDescription}
+              value={data.itemDescription}
               onChange={handleInputChange}
               placeholder="Enter item description"
               rows="4"
@@ -128,9 +150,9 @@ function Item() {
             />
           </div>
 
-          {formData.imagePreview && (
+          {data.imagePreview && (
             <div className="image-preview">
-              <img src={formData.imagePreview} alt="Preview" />
+              <img src={data.imagePreview} alt="Preview" />
             </div>
           )}
 
