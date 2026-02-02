@@ -5,16 +5,34 @@ import items from '../data';
 
 function Home() {
   const [search, setSearch] = useState('');
-  const [allItems, setAllItems] = useState(items);
+  const [allItems, setAllItems] = useState([]);
 
   useEffect(() => {
-    // Load custom items from localStorage
     const customItems = JSON.parse(localStorage.getItem('customItems')) || [];
-    setAllItems([...items, ...customItems]);
+    const deletedIds = JSON.parse(localStorage.getItem('deletedItemIds')) || [];
+    const merged = [...items, ...customItems].filter(i => !deletedIds.includes(i.id));
+    setAllItems(merged);
   }, []);
 
   const handleSearchChange = (e) => {
     setSearch(e.target.value);
+  };
+
+  const handleDelete = (id) => {
+    setAllItems(prev => prev.filter(i => i.id !== id));
+
+    const customItems = JSON.parse(localStorage.getItem('customItems')) || [];
+    const isCustom = customItems.some(i => i.id === id);
+    if (isCustom) {
+      const updatedCustom = customItems.filter(i => i.id !== id);
+      localStorage.setItem('customItems', JSON.stringify(updatedCustom));
+    } else {
+      const deleted = JSON.parse(localStorage.getItem('deletedItemIds')) || [];
+      if (!deleted.includes(id)) {
+        deleted.push(id);
+        localStorage.setItem('deletedItemIds', JSON.stringify(deleted));
+      }
+    }
   };
 
   return (
@@ -55,6 +73,14 @@ function Home() {
               </div>
               <div className="cart-item-desc">{item.itemDescription}</div>
               <div className="cart-item-rating">Rating: {item.rating} ⭐</div>
+              <div style={{ marginTop: 8 }}>
+                <button
+                  className="nav-btn"
+                  onClick={() => handleDelete(item.id)}
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           ))}
         </div>
