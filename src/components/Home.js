@@ -50,8 +50,6 @@ function Home() {
         </div>
         <div className="navbar-right">
           <Link to="/add-item" className="nav-btn">+ Add Item</Link>
-          <Link to="/signup" className="nav-btn">Signup</Link>
-          <Link to="/login" className="nav-btn">Login</Link>
         </div>
       </nav>
       <h2 style={{ textAlign: 'center', marginTop: '32px' }}>Welcome to Home Page</h2>
