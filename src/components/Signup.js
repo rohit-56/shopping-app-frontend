@@ -3,7 +3,7 @@ import './Signup.css';
 import { useNavigate } from 'react-router-dom';
 
 function Signup() {
-  const [form, setForm] = useState({
+  const [userDetails, setUserDetails] = useState({
     name: '',
     mobile: '',
     email: '',
@@ -14,8 +14,8 @@ function Signup() {
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-   // console.log(form);
+    setUserDetails({ ...userDetails, [e.target.name]: e.target.value });
+   // console.log(userDetails);
   };
 
   const handleSubmit = async (e) => {
@@ -24,16 +24,16 @@ function Signup() {
     alert('Signup successful!');
     
     const payload = { 
-      name: form.name,
-      mobile: form.mobile,
-      email: form.email,  
-      username: form.username,
-      password: form.password,
-      location: form.location
+      name: userDetails.name,
+      mobile: userDetails.mobile,
+      email: userDetails.email,  
+      username: userDetails.username,
+      password: userDetails.password,
+      location: userDetails.location
     };
 
     try{
-    const response = await fetch('http://localhost:8080/user/signup', {
+    const response = await fetch('http://localhost:4002/user/signup', {
       method: 'POST',
       headers: {    
         'Content-Type': 'application/json'
@@ -42,14 +42,14 @@ function Signup() {
     });
     if(response.ok){
       const data = await response.json();
-      console.log('Signup successful:', data);
+      console.log('Signup successful:', data); 
+      console.log(userDetails);
+      navigate('/login');
     }
   }catch(error){  
     console.error('Error during signup:', error);
   }
 
-    console.log(form);
-    navigate('/home');
   };
 
   return (
@@ -58,27 +58,27 @@ function Signup() {
       <form onSubmit={handleSubmit} className="signup-form">
         <label>
           Name:
-          <input type="text" name="name" value={form.name} onChange={handleChange} required />
+          <input type="text" name="name" value={userDetails.name} onChange={handleChange} required />
         </label>
         <label>
           Mobile Number:
-          <input type="tel" name="mobile" value={form.mobile} onChange={handleChange} required />
+          <input type="tel" name="mobile" value={userDetails.mobile} onChange={handleChange} required />
         </label>
         <label>
           Email ID:
-          <input type="email" name="email" value={form.email} onChange={handleChange} required />
+          <input type="email" name="email" value={userDetails.email} onChange={handleChange} required />
         </label>
         <label>
           Username:
-          <input type="text" name="username" value={form.username} onChange={handleChange} required />
+          <input type="text" name="username" value={userDetails.username} onChange={handleChange} required />
         </label>
         <label>
           Password:
-          <input type="password" name="password" value={form.password} onChange={handleChange} required />
+          <input type="password" name="password" value={userDetails.password} onChange={handleChange} required />
         </label>
         <label>
           Location:
-          <input type="text" name="location" value={form.location} onChange={handleChange} required />
+          <input type="text" name="location" value={userDetails.location} onChange={handleChange} required />
         </label>
         <button type="submit">Sign Up</button>
       </form>
