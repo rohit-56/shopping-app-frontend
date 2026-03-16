@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import './Signup.css';
 import { useNavigate } from 'react-router-dom';
+import { signup } from '../services/api';
 
 function Signup() {
   const [userDetails, setUserDetails] = useState({
@@ -32,23 +33,14 @@ function Signup() {
       location: userDetails.location
     };
 
-    try{
-    const response = await fetch('http://localhost:4002/user/signup', {
-      method: 'POST',
-      headers: {    
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
-    if(response.ok){
-      const data = await response.json();
-      console.log('Signup successful:', data); 
+    try {
+      const data = await signup(payload);
+      console.log('Signup successful:', data);
       console.log(userDetails);
       navigate('/login');
+    } catch (error) {
+      console.error('Error during signup:', error);
     }
-  }catch(error){  
-    console.error('Error during signup:', error);
-  }
 
   };
 
