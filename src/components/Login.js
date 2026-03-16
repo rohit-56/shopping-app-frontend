@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import './Signup.css';
 import { useNavigate, Link } from 'react-router-dom';
+import { login } from '../services/api';
 
 function Login() {
   const [loginDetails, setLoginDetails] = useState({
@@ -16,29 +17,20 @@ function Login() {
   const handleSubmit =  async (e) => {
     e.preventDefault();
     // You can handle login logic here
-    console.log('Login details:', loginDetails);
+    console.log('Login user:', loginDetails.username);
     const payload = { 
       email: loginDetails.username,
       password: loginDetails.password
     };
 
-    try{
-    const response = await fetch('http://localhost:4002/user/login', {
-      method: 'POST',
-      headers: {    
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
-    if(response.ok){
-      const data = await response.json();
+    try {
+      const data = await login(payload);
       console.log('User logged in successfully:', data);
       alert('Login successful!');
-    navigate('/home');
+      navigate('/home');
+    } catch (error) {
+      console.error('Error during login:', error);
     }
-  }catch(error){  
-    console.error('Error during login:', error);
-  }
     
   };
 
