@@ -11,29 +11,29 @@ function Home() {
   const ITEMS_PER_PAGE = 9;
   const TOTAL_PAGES = 10; // 0..9
 
-  useEffect(() => {
-    const loadItems = async () => {
-      try {
-        const result = await getItems(currentPage, ITEMS_PER_PAGE);
-        let apiItems = [];
+  const loadItems = async (page) => {
+    try {
+      const result = await getItems(page, ITEMS_PER_PAGE);
+      let apiItems = [];
 
-        if (Array.isArray(result)) {
-          apiItems = result;
-        } else {
-          apiItems = Array.isArray(result.items) ? result.items : [];
-        }
-
-        const customItems = JSON.parse(localStorage.getItem('customItems')) || [];
-        const deletedIds = JSON.parse(localStorage.getItem('deletedItemIds')) || [];
-        const merged = [...apiItems, ...customItems].filter(i => !deletedIds.includes(i.id));
-
-        setAllItems(merged);
-      } catch (error) {
-        console.error('Failed to load items:', error);
+      if (Array.isArray(result)) {
+        apiItems = result;
+      } else {
+        apiItems = Array.isArray(result.items) ? result.items : [];
       }
-    };
 
-    loadItems();
+      const customItems = JSON.parse(localStorage.getItem('customItems')) || [];
+      const deletedIds = JSON.parse(localStorage.getItem('deletedItemIds')) || [];
+      const merged = [...apiItems, ...customItems].filter(i => !deletedIds.includes(i.id));
+
+      setAllItems(merged);
+    } catch (error) {
+      console.error('Failed to load items:', error);
+    }
+  };
+
+  useEffect(() => {
+    loadItems(currentPage);
   }, [currentPage]);
 
   const handleSearchChange = (e) => {
@@ -41,28 +41,41 @@ function Home() {
     setCurrentPage(0);
   };
 
-  const changePage = async (newPage) => {
-     try {
-         let safePage = newPage;
-         if(safePage<0 || safePage>=TOTAL_PAGES){
-          safePage=0;
-         }
-         //console.log('Changing to page:', safePage);
-         setCurrentPage(safePage);
-        const result = await getItems(safePage, ITEMS_PER_PAGE);
-        console.log('API items:', safePage);
-        let apiItems = [];
+  const handleAddToCart = (item) => {
+    try {
+      const itemId = item.id ?? item._id ?? `${item.itemName}-${item.amount}`;
+      const savedCart = JSON.parse(localStorage.getItem('cartItems')) || [];
+      const existingItem = savedCart.find((cartItem) => cartItem.id === itemId);
 
-        if (Array.isArray(result)) {
-          apiItems = result;
-        } else {
-          apiItems = Array.isArray(result.items) ? result.items : [];
-        }
+      const nextCart = existingItem
+        ? savedCart.map((cartItem) =>
+            cartItem.id === itemId
+              ? { ...cartItem, quantity: Number(cartItem.quantity || 1) + 1 }
+              : cartItem
+          )
+        : [
+            ...savedCart,
+            {
+              id: itemId,
+              itemName: item.itemName,
+              amount: item.amount ?? item.price ?? 0,
+              quantity: 1,
+              image: item.image || '/images/mobile_1.jpg',
+            },
+          ];
 
-        setAllItems(apiItems);
-      } catch (error) {
-        console.error('Failed to load items:', error);
-      }
+      localStorage.setItem('cartItems', JSON.stringify(nextCart));
+    } catch (error) {
+      console.error('Failed to add item to cart:', error);
+    }
+  };
+
+  const changePage = (newPage) => {
+    let safePage = newPage;
+    if (safePage < 0 || safePage >= TOTAL_PAGES) {
+      safePage = 0;
+    }
+    setCurrentPage(safePage);
   };
 
   const handleDelete = (id) => {
@@ -112,6 +125,7 @@ function Home() {
         </div>
         <div className="navbar-right">
           <Link to="/add-item" className="nav-btn">+ Add Item</Link>
+          <Link to="/cart" className="nav-btn">Cart</Link>
           <button
             type="button"
             className="nav-btn"
@@ -124,9 +138,8 @@ function Home() {
           </button>
         </div>
       </nav>
-      <h2 style={{ textAlign: 'center', marginTop: '32px' }}>Welcome to Home Page</h2>
       <div className="cart-view">
-        <h3>Cart Items</h3>
+        <h3>Products</h3>
         <div className="cart-list">
           {Array.isArray(currentItems) && currentItems.length > 0 ? (
             currentItems.map((item, index) => {
@@ -145,7 +158,7 @@ function Home() {
                     <button
                       className="nav-btn add-cart-btn"
                       type="button"
-                      onClick={() => console.log('Add to cart', item.id)}
+                      onClick={() => handleAddToCart(item)}
                     >
                       Add to Cart
                     </button>
