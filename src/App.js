@@ -3,7 +3,8 @@ import Signup from './components/Signup';
 import Login from './components/Login';
 import Home from './components/Home';
 import Item from './components/Item';
-import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
+import Cart from './components/Cart';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
 function App() {
   return (
@@ -11,6 +12,7 @@ function App() {
       <Routes>
         <Route path="/home" element={<Home />} />
         <Route path="/add-item" element={<Item />} />
+        <Route path="/cart" element={<Cart />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/login" element={<Login />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
