@@ -12,6 +12,8 @@ function Signup() {
     password: '',
     location: ''
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -22,8 +24,8 @@ function Signup() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     // You can handle form submission here
-    alert('Signup successful!');
-    
+    setErrorMessage('');
+
     const payload = { 
       name: userDetails.name,
       mobile: userDetails.mobile,
@@ -40,6 +42,8 @@ function Signup() {
       navigate('/login');
     } catch (error) {
       console.error('Error during signup:', error);
+      const message = error?.response?.data?.message || error?.response?.data?.error || error?.message || 'Signup failed. Please try again.';
+      setErrorMessage(message);
     }
 
   };
@@ -66,8 +70,17 @@ function Signup() {
         </label>
         <label>
           Password:
-          <input type="password" name="password" value={userDetails.password} onChange={handleChange} required />
+          <div className="password-field">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              name="password"
+              value={userDetails.password}
+              onChange={handleChange}
+              required
+            />
+          </div>
         </label>
+        {errorMessage && <div className="form-error">{errorMessage}</div>}
         <label>
           Location:
           <input type="text" name="location" value={userDetails.location} onChange={handleChange} required />

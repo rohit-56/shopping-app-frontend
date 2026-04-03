@@ -65,6 +65,29 @@ export async function signup({ name, mobile, email, username, password, location
 
 export function logout() {
   setAuthToken(null);
+  localStorage.removeItem('userId');
+}
+
+export async function addItemToCart({ userId, itemId, quantity }) {
+  const response = await api.post('/shop/cart/addItemToCart', {
+    userId,
+    itemId,
+    quantity
+  });
+  return response.data;
+}
+
+export async function getCartItems(userId) {
+  const response = await api.get(`/shop/cart/${userId}`);
+  return response.data;
+}
+
+export async function deleteItemFromCart({ userId, itemId }) {
+  const response = await api.post('/shop/cart/deleteItemFromCart', {
+    userId,
+    itemId
+  });
+  return response.data;
 }
 
 // Add other endpoint helpers here (e.g., fetchItems, createItem, updateUser)
@@ -82,6 +105,9 @@ const apiService = {
   login,
   signup,
   logout,
+  addItemToCart,
+  getCartItems,
+  deleteItemFromCart,
   getItems
 };
 
