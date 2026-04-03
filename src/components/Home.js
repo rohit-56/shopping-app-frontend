@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import './Home.css';
-import { logout, getItems } from '../services/api';
+import { logout, getItems, addItemToCart } from '../services/api';
 
 function Home() {
   const navigate = useNavigate();
@@ -11,15 +11,23 @@ function Home() {
   const ITEMS_PER_PAGE = 9;
   const TOTAL_PAGES = 10; // 0..9
 
+  const getBackendItemId = (item) =>
+    item._id ?? item.itemId ?? (item.id && item.id !== item.itemName ? item.id : undefined);
+
+  const normalizeBackendItem = (item) => ({
+    ...item,
+    id: getBackendItemId(item),
+  });
+
   const loadItems = async (page) => {
     try {
       const result = await getItems(page, ITEMS_PER_PAGE);
       let apiItems = [];
 
       if (Array.isArray(result)) {
-        apiItems = result;
+        apiItems = result.map(normalizeBackendItem);
       } else {
-        apiItems = Array.isArray(result.items) ? result.items : [];
+        apiItems = Array.isArray(result.items) ? result.items.map(normalizeBackendItem) : [];
       }
 
       const customItems = JSON.parse(localStorage.getItem('customItems')) || [];
@@ -36,21 +44,42 @@ function Home() {
     loadItems(currentPage);
   }, [currentPage]);
 
+  const getCurrentUserId = () => {
+    return (
+      localStorage.getItem('userId') ||
+      localStorage.getItem('userEmail') ||
+      localStorage.getItem('userName') ||
+      'guest'
+    );
+  };
+
   const handleSearchChange = (e) => {
     setSearch(e.target.value);
     setCurrentPage(0);
   };
 
-  const handleAddToCart = (item) => {
+  const handleAddToCart = async (item) => {
     try {
-      const itemId = item.id ?? item._id ?? `${item.itemName}-${item.amount}`;
+      const itemId = getBackendItemId(item);
+      if (!itemId) {
+        console.error('Unable to add item to cart: missing backend item id', item);
+        return;
+      }
       const savedCart = JSON.parse(localStorage.getItem('cartItems')) || [];
       const existingItem = savedCart.find((cartItem) => cartItem.id === itemId);
+      const availableQty = item.available ?? item.availableQuantity ?? item.stock ?? item.quantity ?? null;
+      const nextQuantity = existingItem
+        ? Number(existingItem.quantity || 1) + 1
+        : 1;
 
       const nextCart = existingItem
         ? savedCart.map((cartItem) =>
             cartItem.id === itemId
-              ? { ...cartItem, quantity: Number(cartItem.quantity || 1) + 1 }
+              ? {
+                  ...cartItem,
+                  quantity: nextQuantity,
+                  available: cartItem.available ?? availableQty,
+                }
               : cartItem
           )
         : [
@@ -61,10 +90,17 @@ function Home() {
               amount: item.amount ?? item.price ?? 0,
               quantity: 1,
               image: item.image || '/images/mobile_1.jpg',
+              available: availableQty,
             },
           ];
 
       localStorage.setItem('cartItems', JSON.stringify(nextCart));
+      const userId = getCurrentUserId();
+      try {
+        await addItemToCart({ userId, itemId, quantity: nextQuantity });
+      } catch (error) {
+        console.error('Failed to sync cart with backend:', error);
+      }
     } catch (error) {
       console.error('Failed to add item to cart:', error);
     }
@@ -159,6 +195,10 @@ function Home() {
                       className="nav-btn add-cart-btn"
                       type="button"
                       onClick={() => handleAddToCart(item)}
+                      disabled={
+                        (item.available ?? item.availableQuantity ?? item.stock ?? item.quantity ?? null) !== null &&
+                        Number(item.available ?? item.availableQuantity ?? item.stock ?? item.quantity) <= 0
+                      }
                     >
                       Add to Cart
                     </button>
