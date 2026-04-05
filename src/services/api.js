@@ -101,6 +101,23 @@ export async function getItems(page, limit) {
   return response.data;
 }
 
+export async function getItemByCategory(category) {
+  const response = await api.get('api/items/getItemByCategory', {
+    params: {
+      category: category
+    }
+  });
+  return response.data;
+}
+
+export async function getUserByEmail(email) {
+  if (!email) {
+    throw new Error('Missing email parameter');
+  }
+  const response = await api.get(`/user/getUserByEmail/${email}`);
+  return response.data;
+}
+
 const apiService = {
   login,
   signup,
@@ -108,7 +125,9 @@ const apiService = {
   addItemToCart,
   getCartItems,
   deleteItemFromCart,
-  getItems
+  getItems,
+  getItemByCategory,
+  getUserByEmail
 };
 
 export default apiService;

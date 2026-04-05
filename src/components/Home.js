@@ -1,15 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import './Home.css';
-import { logout, getItems, addItemToCart } from '../services/api';
+import { logout, getItems, addItemToCart, getItemByCategory } from '../services/api';
 
 function Home() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [allItems, setAllItems] = useState([]);
   const [currentPage, setCurrentPage] = useState(0);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [categorySearchResults, setCategorySearchResults] = useState(null);
+  const [isSearchingByCategory, setIsSearchingByCategory] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const ITEMS_PER_PAGE = 9;
   const TOTAL_PAGES = 10; // 0..9
+  const CATEGORIES = ['MOBILE', 'LAPTOP', 'TELEVISION'];
 
   const getBackendItemId = (item) =>
     item._id ?? item.itemId ?? (item.id && item.id !== item.itemName ? item.id : undefined);
@@ -53,9 +58,59 @@ function Home() {
     );
   };
 
+  const getImageForCategory = (category) => {
+    if (!category) return '/images/mobile_1.jpg';
+    const normalized = category.toString().trim().toUpperCase();
+    if (normalized === 'MOBILE') return '/images/mobile_1.jpg';
+    if (normalized === 'LAPTOP') return '/images/laptop_1.jpg';
+    if (normalized === 'TELEVISION') return '/images/television_1.jpg';
+    return '/images/mobile_1.jpg';
+  };
+
+  const getSuggestions = (input) => {
+    if (!input.trim()) return [];
+    const lowerInput = input.toLowerCase();
+    return CATEGORIES.filter(cat => 
+      cat.toLowerCase().startsWith(lowerInput)
+    );
+  };
+
   const handleSearchChange = (e) => {
-    setSearch(e.target.value);
+    const value = e.target.value;
+    setSearch(value);
     setCurrentPage(0);
+    setCategorySearchResults(null);
+    setIsSearchingByCategory(false);
+    
+    if (value.trim()) {
+      setShowSuggestions(true);
+    } else {
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleCategorySelect = async (category) => {
+    setSearch(category);
+    setShowSuggestions(false);
+    setIsSearchingByCategory(true);
+    
+    try {
+      const result = await getItemByCategory(category);
+      let items = [];
+      
+      if (Array.isArray(result)) {
+        items = result.map(normalizeBackendItem);
+      } else if (result.items && Array.isArray(result.items)) {
+        items = result.items.map(normalizeBackendItem);
+      } else if (result.data && Array.isArray(result.data)) {
+        items = result.data.map(normalizeBackendItem);
+      }
+      
+      setCategorySearchResults(items);
+    } catch (error) {
+      console.error('Failed to fetch category items:', error);
+      setCategorySearchResults([]);
+    }
   };
 
   const handleAddToCart = async (item) => {
@@ -89,7 +144,7 @@ function Home() {
               itemName: item.itemName,
               amount: item.amount ?? item.price ?? 0,
               quantity: 1,
-              image: item.image || '/images/mobile_1.jpg',
+              image: item.image || getImageForCategory(item.category),
               available: availableQty,
             },
           ];
@@ -116,6 +171,9 @@ function Home() {
 
   const handleDelete = (id) => {
     setAllItems(prev => prev.filter(i => i.id !== id));
+    setCategorySearchResults(prev => 
+      prev ? prev.filter(i => i.id !== id) : prev
+    );
 
     const customItems = JSON.parse(localStorage.getItem('customItems')) || [];
     const isCustom = customItems.some(i => i.id === id);
@@ -131,14 +189,19 @@ function Home() {
     }
   };
 
-  const filteredItems = allItems.filter(item => {
-    if (!search.trim()) return true;
-    return item.category?.toLowerCase().includes(search.trim().toLowerCase());
-  });
+  const suggestions = getSuggestions(search);
+  
+  // Use category search results if available, otherwise filter all items
+  const displayItems = isSearchingByCategory && categorySearchResults !== null 
+    ? categorySearchResults 
+    : allItems.filter(item => {
+        if (!search.trim()) return true;
+        return item.category?.toLowerCase().includes(search.trim().toLowerCase());
+      });
 
   const derivedTotalPages = TOTAL_PAGES;
   const currentPageSafe = Math.max(0, Math.min(TOTAL_PAGES - 1, currentPage));
-  const currentItems = filteredItems; // server side paging is applied in getItems()
+  const currentItems = displayItems;
 
   useEffect(() => {
     if (currentPage !== currentPageSafe) {
@@ -146,36 +209,98 @@ function Home() {
     }
   }, [currentPage, currentPageSafe]);
 
+  const handleClearSearch = () => {
+    setSearch('');
+    setShowSuggestions(false);
+    setCategorySearchResults(null);
+    setIsSearchingByCategory(false);
+    setCurrentPage(0);
+  };
+
   return (
     <div className="home-container">
       <nav className="navbar">
         <div className="navbar-left">
-          <label htmlFor="search-category">Search by Category:</label>
-          <input
-            id="search-category"
-            type="text"
-            value={search}
-            onChange={handleSearchChange}
-            placeholder="Enter category..."
-          />
+          <div className="search-category-wrapper">
+            <label htmlFor="search-category">Search by Category:</label>
+            <div className="search-input-container">
+              <input
+                id="search-category"
+                type="text"
+                value={search}
+                onChange={handleSearchChange}
+                onFocus={() => search.trim() && setShowSuggestions(true)}
+                placeholder="Enter category (e.g., MOBILE, LAPTOP, TABLET)..."
+                autoComplete="off"
+              />
+              {search && (
+                <button 
+                  className="clear-search-btn"
+                  onClick={handleClearSearch}
+                  title="Clear search"
+                >
+                  ✕
+                </button>
+              )}
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="suggestions-dropdown">
+                  {suggestions.map((suggestion) => (
+                    <div
+                      key={suggestion}
+                      className="suggestion-item"
+                      onClick={() => handleCategorySelect(suggestion)}
+                    >
+                      {suggestion}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
         <div className="navbar-right">
           <Link to="/add-item" className="nav-btn">+ Add Item</Link>
-          <Link to="/cart" className="nav-btn">Cart</Link>
-          <button
-            type="button"
-            className="nav-btn"
-            onClick={() => {
-              logout();
-              navigate('/login');
-            }}
-          >
-            Logout
-          </button>
+          <Link to="/cart" className="nav-btn">🛒 Cart</Link>
+          <div className="user-dropdown-container">
+            <button
+              type="button"
+              className="nav-btn user-dropdown-btn"
+              onClick={() => setShowUserMenu((prev) => !prev)}
+            >
+              Profile ▾
+            </button>
+            {showUserMenu && (
+              <div className="user-dropdown-menu">
+                <button
+                  type="button"
+                  className="user-dropdown-item"
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    navigate('/profile');
+                  }}
+                >
+                  Profile
+                </button>
+                <button
+                  type="button"
+                  className="user-dropdown-item"
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    logout();
+                    navigate('/login');
+                  }}
+                >
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </nav>
       <div className="cart-view">
-        <h3>Products</h3>
+        <h3>
+          {isSearchingByCategory ? `Products in ${search}` : 'Products'}
+        </h3>
         <div className="cart-list">
           {Array.isArray(currentItems) && currentItems.length > 0 ? (
             currentItems.map((item, index) => {
@@ -183,7 +308,7 @@ function Home() {
               return (
                 <div className="cart-item" key={itemKey}>
                   <div className="cart-item-image">
-                    <img src="/images/mobile_1.jpg" alt={item.itemName} />
+                    <img src={item.image || getImageForCategory(item.category)} alt={item.itemName} />
                   </div>
                   <div className="cart-item-header">
                     <span className="cart-item-name">{item.itemName}</span>
@@ -228,29 +353,31 @@ function Home() {
           )}
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 20, gap: 8 }}>
-          <button
-            className="nav-btn"
-            type="button"
-            onClick={() => changePage(currentPageSafe - 1)}
-            disabled={currentPageSafe === 0}
-          >
-            Previous
-          </button>
+        {!isSearchingByCategory && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: 20, gap: 8 }}>
+            <button
+              className="nav-btn"
+              type="button"
+              onClick={() => changePage(currentPageSafe - 1)}
+              disabled={currentPageSafe === 0}
+            >
+              Previous
+            </button>
 
-          <span style={{ alignSelf: 'center' }}>
-            Page {currentPageSafe} of {derivedTotalPages - 1}
-          </span>
+            <span style={{ alignSelf: 'center' }}>
+              Page {currentPageSafe} of {derivedTotalPages - 1}
+            </span>
 
-          <button
-            className="nav-btn"
-            type="button"
-            onClick={() => changePage(currentPageSafe + 1)}
-            disabled={currentPageSafe === derivedTotalPages - 1}
-          >
-            Next
-          </button>
-        </div>
+            <button
+              className="nav-btn"
+              type="button"
+              onClick={() => changePage(currentPageSafe + 1)}
+              disabled={currentPageSafe === derivedTotalPages - 1}
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
